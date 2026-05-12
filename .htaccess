@@ -1,0 +1,45 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  
+  # Jika yang diakses adalah file atau folder yang benar-benar ada (misal gambar/css), biarkan.
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  
+  # Jika file/folder tidak ada, arahkan semua ke index.html (Khusus React SPA)
+  RewriteRule . /index.html [L]
+</IfModule>
+
+# Matikan fitur melihat daftar isi folder (Security)
+Options -Indexes
+
+# Header Keamanan Frontend
+<IfModule mod_headers.c>
+  Header always unset X-Powered-By
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+  Header always set Cross-Origin-Opener-Policy "same-origin"
+  Header always set Cross-Origin-Resource-Policy "same-origin"
+  Header always set Report-To "{\"group\":\"csp-endpoint\",\"max_age\":10886400,\"endpoints\":[{\"url\":\"/api/security/csp-report\"}]}"
+  Header always set Reporting-Endpoints "csp-endpoint=\"/api/security/csp-report\""
+
+  # CSP untuk SPA + Google Fonts yang dipakai di index.html
+  Header always set Content-Security-Policy "default-src 'self'; base-uri 'self'; frame-ancestors 'self'; object-src 'none'; script-src 'self'; connect-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; form-action 'self'; report-uri /api/security/csp-report; report-to csp-endpoint;"
+
+  # Aktifkan HSTS hanya saat HTTPS
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains" env=HTTPS
+</IfModule>
+
+# Blok metode HTTP berisiko yang tidak dibutuhkan
+<IfModule mod_rewrite.c>
+  RewriteCond %{REQUEST_METHOD} ^(TRACE|TRACK) [NC]
+  RewriteRule .* - [F,L]
+</IfModule>
+
+# Mengaktifkan kompresi GZIP untuk mempercepat loading web
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css application/javascript application/json
+</IfModule>

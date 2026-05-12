@@ -1,0 +1,8 @@
+# Mematikan eksekusi PHP, CGI, Perl, dll di dalam folder ini
+<FilesMatch "\.(php|php5|php4|php3|phtml|pl|py|jsp|asp|htm|shtml|sh|cgi)$">
+    Order Deny,Allow
+    Deny from all
+</FilesMatch>
+
+# Matikan engine PHP sepenuhnya di folder ini
+php_flag engine off

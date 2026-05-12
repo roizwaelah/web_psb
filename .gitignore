@@ -1,0 +1,7 @@
+/.hintrc
+/.sisyphus
+/daftar.sql
+/dist
+/node_modules
+/package-lock.json
+/SECURITY_STATUS.md
