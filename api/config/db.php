@@ -1,12 +1,18 @@
 <?php
-$host = "localhost";
-$db_name = "u688635524_daftar";
-$username = "u688635524_daftar";
-$password = "Achmad.12015.@";
+require_once __DIR__ . '/env.php';
+
+$host = psb_env('DB_HOST');
+$db_name = psb_env('DB_NAME');
+$username = psb_env('DB_USER');
+$password = psb_env('DB_PASS');
+$charset = psb_env('DB_CHARSET', 'utf8mb4');
+
+if (!$host || !$db_name || !$username || $password === null) {
+    psb_config_error('Konfigurasi database belum lengkap. Set DB_HOST, DB_NAME, DB_USER, dan DB_PASS.');
+}
 
 try {
-    // Membuat koneksi PDO beserta pengaturan charset utf8mb4 agar mendukung karakter khusus
-    $conn = new PDO("mysql:host=" . $host . ";dbname=" . $db_name . ";charset=utf8mb4", $username, $password);
+    $conn = new PDO("mysql:host=" . $host . ";dbname=" . $db_name . ";charset=" . $charset, $username, $password);
     
     // Mengatur PDO agar selalu melempar Exception jika terjadi error SQL
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);

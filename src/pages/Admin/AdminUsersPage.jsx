@@ -45,8 +45,7 @@ export default function AdminUsersPage() {
   };
 
   const handleEdit = (user) => {
-    // API lama mungkin belum mengembalikan lembaga_id ke tabel, jadi kita fallback ke string kosong
-    setFormData({ id: user.id, nama_lengkap: user.nama_lengkap, username: user.username, password: "", role: user.role, lembaga_id: "" });
+    setFormData({ id: user.id, nama_lengkap: user.nama_lengkap, username: user.username, password: "", role: user.role, lembaga_id: user.lembaga_id ?? "" });
     setIsFormOpen(true);
   };
 

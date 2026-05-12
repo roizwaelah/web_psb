@@ -23,6 +23,13 @@ class AdminController
         return $scheme . '://' . $host . ($basePath !== '' ? $basePath : '');
     }
 
+    private function reject($status, $message)
+    {
+        http_response_code($status);
+        echo json_encode(["message" => $message]);
+        exit();
+    }
+
     private function ensureScopedWebContentTables()
     {
         $tables = ['web_alur', 'web_persyaratan', 'web_informasi'];
@@ -142,6 +149,10 @@ class AdminController
         $data = json_decode(file_get_contents("php://input"));
         if (!isset($data->status)) { http_response_code(400); exit(); }
 
+        if (!in_array($data->status, ['Menunggu', 'Proses Seleksi', 'Diterima', 'Ditolak'], true)) {
+            $this->reject(400, 'Status penerimaan tidak valid.');
+        }
+
         try {
             $whereAnd = $this->lembaga_id ? " AND lembaga_id = " . intval($this->lembaga_id) : "";
             $stmt = $this->conn->prepare("UPDATE santri SET status_penerimaan = ? WHERE id = ? $whereAnd");
@@ -248,6 +259,18 @@ class AdminController
         }
 
         $file = $_FILES['image'];
+        if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
+            http_response_code(400);
+            echo json_encode(["message" => "Upload gambar gagal."]);
+            exit();
+        }
+
+        if (($file['size'] ?? 0) > 2 * 1024 * 1024) {
+            http_response_code(400);
+            echo json_encode(["message" => "Ukuran gambar terlalu besar. Maksimal 2MB."]);
+            exit();
+        }
+
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
         $detectedMime = $finfo ? finfo_file($finfo, $file['tmp_name']) : null;
         if ($finfo) {
@@ -269,7 +292,7 @@ class AdminController
         // Folder khusus aset publik
         $uploadDir = __DIR__ . '/../uploads/images/';
         if (!is_dir($uploadDir))
-            mkdir($uploadDir, 0777, true);
+            mkdir($uploadDir, 0755, true);
 
         $extension = $allowedMimeToExt[$detectedMime];
         $fileName = 'public_' . time() . '_' . rand(1000, 9999) . '.' . $extension;
@@ -385,7 +408,7 @@ class AdminController
         try {
             // Superadmin melihat semua. Admin lembaga hanya melihat panitia di lembaganya sendiri.
             $where = $this->lembaga_id ? "WHERE lembaga_id = " . intval($this->lembaga_id) : "";
-            $stmt = $this->conn->query("SELECT id, username, nama_lengkap, role, created_at FROM admins $where ORDER BY created_at DESC");
+            $stmt = $this->conn->query("SELECT id, username, nama_lengkap, role, lembaga_id, created_at FROM admins $where ORDER BY created_at DESC");
             $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
             http_response_code(200); echo json_encode(["message" => "Data admin ditarik", "data" => $data]);
         } catch (PDOException $e) {
@@ -398,9 +421,17 @@ class AdminController
     {
         $data = json_decode(file_get_contents("php://input"));
         if (empty($data->username) || empty($data->password) || empty($data->nama_lengkap) || empty($data->role)) {
-            http_response_code(400);
-            exit();
+            $this->reject(400, 'Data pengguna belum lengkap.');
         }
+
+        if (!in_array($data->role, ['admin', 'validator'], true)) {
+            $this->reject(400, 'Role pengguna tidak valid.');
+        }
+
+        if ($this->lembaga_id !== null && $data->role === 'admin') {
+            $this->reject(403, 'Admin lembaga hanya boleh membuat akun validator.');
+        }
+
         try {
             // Hash password menggunakan BCRYPT bawaan PHP
             $hashedPassword = password_hash($data->password, PASSWORD_BCRYPT);
@@ -422,6 +453,18 @@ class AdminController
     {
         $data = json_decode(file_get_contents("php://input"));
 
+        if (empty($data->username) || empty($data->nama_lengkap) || empty($data->role)) {
+            $this->reject(400, 'Data pengguna belum lengkap.');
+        }
+
+        if (!in_array($data->role, ['admin', 'validator'], true)) {
+            $this->reject(400, 'Role pengguna tidak valid.');
+        }
+
+        if ($this->lembaga_id !== null && $data->role === 'admin') {
+            $this->reject(403, 'Admin lembaga hanya boleh mengelola akun validator.');
+        }
+
         try {
             // Admin lembaga hanya boleh mengubah akun pada lembaganya sendiri.
             if ($this->lembaga_id !== null) {
@@ -438,12 +481,22 @@ class AdminController
             if (!empty($data->password)) {
                 // Jika password diisi, update beserta password barunya
                 $hashedPassword = password_hash($data->password, PASSWORD_BCRYPT);
-                $stmt = $this->conn->prepare("UPDATE admins SET username = ?, password = ?, nama_lengkap = ?, role = ? WHERE id = ?");
-                $stmt->execute([$data->username, $hashedPassword, $data->nama_lengkap, $data->role, $id]);
+                if ($this->lembaga_id === null) {
+                    $stmt = $this->conn->prepare("UPDATE admins SET username = ?, password = ?, nama_lengkap = ?, role = ?, lembaga_id = ? WHERE id = ?");
+                    $stmt->execute([$data->username, $hashedPassword, $data->nama_lengkap, $data->role, $data->lembaga_id ?? null, $id]);
+                } else {
+                    $stmt = $this->conn->prepare("UPDATE admins SET username = ?, password = ?, nama_lengkap = ?, role = ? WHERE id = ?");
+                    $stmt->execute([$data->username, $hashedPassword, $data->nama_lengkap, $data->role, $id]);
+                }
             } else {
                 // Jika password kosong, jangan update kolom password
-                $stmt = $this->conn->prepare("UPDATE admins SET username = ?, nama_lengkap = ?, role = ? WHERE id = ?");
-                $stmt->execute([$data->username, $data->nama_lengkap, $data->role, $id]);
+                if ($this->lembaga_id === null) {
+                    $stmt = $this->conn->prepare("UPDATE admins SET username = ?, nama_lengkap = ?, role = ?, lembaga_id = ? WHERE id = ?");
+                    $stmt->execute([$data->username, $data->nama_lengkap, $data->role, $data->lembaga_id ?? null, $id]);
+                } else {
+                    $stmt = $this->conn->prepare("UPDATE admins SET username = ?, nama_lengkap = ?, role = ? WHERE id = ?");
+                    $stmt->execute([$data->username, $data->nama_lengkap, $data->role, $id]);
+                }
             }
 
             http_response_code(200);
@@ -471,10 +524,10 @@ class AdminController
         try {
             // Admin lembaga hanya boleh menghapus akun pada lembaganya sendiri.
             if ($this->lembaga_id !== null) {
-                $scopeCheck = $this->conn->prepare("SELECT lembaga_id FROM admins WHERE id = ?");
+                $scopeCheck = $this->conn->prepare("SELECT lembaga_id, role FROM admins WHERE id = ?");
                 $scopeCheck->execute([$id]);
-                $targetLembagaId = $scopeCheck->fetchColumn();
-                if ($targetLembagaId === false || intval($targetLembagaId) !== intval($this->lembaga_id)) {
+                $targetAdmin = $scopeCheck->fetch(PDO::FETCH_ASSOC);
+                if (!$targetAdmin || intval($targetAdmin['lembaga_id']) !== intval($this->lembaga_id) || $targetAdmin['role'] !== 'validator') {
                     http_response_code(403);
                     echo json_encode(["message" => "Akses ditolak. Anda tidak berwenang menghapus akun ini."]);
                     exit();
@@ -501,6 +554,10 @@ class AdminController
             http_response_code(400);
             echo json_encode(["message" => "Status pembayaran wajib diisi."]);
             exit();
+        }
+
+        if (!in_array($data['status_pembayaran'], ['Belum Bayar', 'Menunggu Verifikasi', 'Lunas'], true)) {
+            $this->reject(400, 'Status pembayaran tidak valid.');
         }
 
         try {

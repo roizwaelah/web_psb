@@ -16,6 +16,18 @@ class DokumenController {
         return $scheme . '://' . $host . ($basePath !== '' ? $basePath : '');
     }
 
+    private function ensurePaymentComplete($santri_id) {
+        $stmt = $this->conn->prepare("SELECT status_pembayaran FROM santri WHERE id = ? LIMIT 1");
+        $stmt->execute([$santri_id]);
+        $status = $stmt->fetchColumn();
+
+        if ($status !== 'Lunas') {
+            http_response_code(403);
+            echo json_encode(["message" => "Selesaikan pembayaran terlebih dahulu untuk mengakses dokumen."]);
+            exit();
+        }
+    }
+
     // Mengambil daftar dokumen
     public function getDokumen($userData) {
         $santri_id = $userData->id ?? ($userData->data->id ?? null);
@@ -25,6 +37,8 @@ class DokumenController {
         }
 
         try {
+            $this->ensurePaymentComplete($santri_id);
+
             $stmt = $this->conn->prepare("SELECT jenis_dokumen, file_path, file_type FROM dokumen_santri WHERE santri_id = :santri_id");
             $stmt->execute([':santri_id' => $santri_id]);
             $dokumen = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -54,6 +68,8 @@ class DokumenController {
         if (!$santri_id || !$nisn) {
             http_response_code(400); echo json_encode(["message" => "Data user tidak lengkap."]); exit();
         }
+
+        $this->ensurePaymentComplete($santri_id);
         
         // BIKIN NAMA FOLDER DARI NAMA SANTRI
         $nama_bersih = preg_replace('/[^a-zA-Z0-9]/', '_', strtolower($nama_lengkap));
@@ -65,6 +81,10 @@ class DokumenController {
         }
 
         $jenis_dokumen = $_POST['jenis_dokumen'];
+        $allowedDocumentTypes = ['pas_foto', 'kartu_keluarga', 'akta_kelahiran', 'ijazah'];
+        if (!in_array($jenis_dokumen, $allowedDocumentTypes, true)) {
+            http_response_code(400); echo json_encode(["message" => "Jenis dokumen tidak valid."]); exit();
+        }
         $file = $_FILES['file'];
 
         $finfo = finfo_open(FILEINFO_MIME_TYPE);
