@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import api from "@/services/api";
 import { useToast } from "@/context/ToastContext";
@@ -11,6 +12,7 @@ export default function AdminPengumumanPage() {
 
   const { showToast } = useToast();
   const { openModal } = useModal();
+  const navigate = useNavigate();
 
   // Deteksi Admin yang sedang login
   const adminData = JSON.parse(localStorage.getItem("admin_data") || "{}");
@@ -18,6 +20,13 @@ export default function AdminPengumumanPage() {
   // State untuk memilih lembaga mana yang mau diubah pengumumannya (Khusus Superadmin)
   const [selectedKode, setSelectedKode] = useState(adminData?.kode_lembaga || "ponpes");
   const [selectedLembagaId, setSelectedLembagaId] = useState(adminData?.lembaga_id || 1);
+
+  useEffect(() => {
+    if (!["admin", "superadmin"].includes(adminData?.role)) {
+      showToast({ type: "error", title: "Akses Ditolak", description: "Menu pengumuman hanya untuk Administrator." });
+      navigate("/admin/dashboard", { replace: true });
+    }
+  }, [adminData?.role, navigate, showToast]);
 
   // Tarik data pengumuman dinamis berdasarkan lembaga yang dipilih
   useEffect(() => {

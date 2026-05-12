@@ -5,3 +5,6 @@
 /node_modules
 /package-lock.json
 /SECURITY_STATUS.md
+.env
+api/.env.example
+api/.env

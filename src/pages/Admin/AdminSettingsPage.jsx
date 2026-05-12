@@ -25,7 +25,7 @@ export default function AdminSettingsPage() {
   const [selectedLembagaId, setSelectedLembagaId] = useState(adminData?.lembaga_id || 1);
 
   useEffect(() => {
-    if (adminData?.role !== "admin") {
+    if (!["admin", "superadmin"].includes(adminData?.role)) {
       showToast({ type: "error", title: "Akses Ditolak", description: "Menu pengaturan hanya untuk Administrator." });
       navigate("/admin/dashboard", { replace: true });
     }

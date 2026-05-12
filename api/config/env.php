@@ -59,6 +59,19 @@ if (!function_exists('psb_env')) {
     }
 }
 
+if (!function_exists('psb_env_exists')) {
+    function psb_env_exists($key)
+    {
+        psb_load_env();
+
+        if (getenv($key) !== false) {
+            return true;
+        }
+
+        return array_key_exists($key, $_ENV) || array_key_exists($key, $_SERVER);
+    }
+}
+
 if (!function_exists('psb_config_error')) {
     function psb_config_error($message)
     {

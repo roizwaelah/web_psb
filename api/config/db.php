@@ -4,7 +4,7 @@ require_once __DIR__ . '/env.php';
 $host = psb_env('DB_HOST');
 $db_name = psb_env('DB_NAME');
 $username = psb_env('DB_USER');
-$password = psb_env('DB_PASS');
+$password = psb_env_exists('DB_PASS') ? (string) psb_env('DB_PASS', '') : null;
 $charset = psb_env('DB_CHARSET', 'utf8mb4');
 
 if (!$host || !$db_name || !$username || $password === null) {

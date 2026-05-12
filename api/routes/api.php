@@ -19,7 +19,7 @@ require_once __DIR__ . '/../controllers/DokumenController.php';
 // =====================================
 require_once __DIR__ . '/../controllers/LicenseChecker.php'; 
 
-$clientLicenseKey = "e277d9b10ab6b897d351015fc89e26e8"; 
+$clientLicenseKey = "f254b7a6c59cb1881b92aa10dfc3e8bf"; 
 $checker = new LicenseChecker($clientLicenseKey);
 $checker->verify(); 
 // =====================================
@@ -102,7 +102,10 @@ elseif (strpos($uri, '/admin/') !== false) {
     $userRole = $userData->role ?? ($userData->data->role ?? '');
     $adminLembagaId = $userData->lembaga_id ?? ($userData->data->lembaga_id ?? null);
     
-    if (!in_array($userRole, ['admin', 'validator'])) {
+    $isAdminLevel = in_array($userRole, ['admin', 'superadmin'], true);
+    $isAdminOrValidator = $isAdminLevel || $userRole === 'validator';
+
+    if (!$isAdminOrValidator) {
         http_response_code(403); 
         echo json_encode(["message" => "Akses ditolak."]);
         exit();
@@ -131,7 +134,7 @@ elseif (strpos($uri, '/admin/') !== false) {
     }
     // RUTE SETTINGS
     elseif (strpos($uri, '/admin/settings') !== false && $method === 'PUT') {
-        if ($userRole !== 'admin') {
+        if (!$isAdminLevel) {
             http_response_code(403); 
             echo json_encode(["message" => "Akses ditolak. Rute ini khusus Administrator."]);
             exit();
@@ -140,21 +143,21 @@ elseif (strpos($uri, '/admin/') !== false) {
     }
     // RUTE UPLOAD GAMBAR
     elseif (strpos($uri, '/admin/upload-image') !== false && $method === 'POST') {
-        if ($userRole !== 'admin') { http_response_code(403); exit(); }
+        if (!$isAdminLevel) { http_response_code(403); exit(); }
         $adminController->uploadPublicImage();
     }
     // UPDATE & DELETE SANTRI (Khusus Admin Utama)
     elseif (preg_match('/\/admin\/pendaftar\/(\d+)$/', $uri, $matches) && $method === 'PUT') {
-        if ($userRole !== 'admin') { http_response_code(403); exit(); }
+        if (!$isAdminLevel) { http_response_code(403); exit(); }
         $adminController->updateSantri($matches[1]);
     }
     elseif (preg_match('/\/admin\/pendaftar\/(\d+)$/', $uri, $matches) && $method === 'DELETE') {
-        if ($userRole !== 'admin') { http_response_code(403); exit(); }
+        if (!$isAdminLevel) { http_response_code(403); exit(); }
         $adminController->deleteSantri($matches[1]);
     }
     // MANAJEMEN PENGGUNA
     elseif (strpos($uri, '/admin/users') !== false) {
-        if ($userRole !== 'admin') {
+        if (!$isAdminLevel) {
             http_response_code(403); echo json_encode(["message" => "Akses ditolak."]); exit();
         }
 
@@ -170,7 +173,7 @@ elseif (strpos($uri, '/admin/') !== false) {
     }
     // UPDATE PENGUMUMAN
     elseif (strpos($uri, '/admin/pengumuman') !== false && $method === 'PUT') {
-        if ($userRole !== 'admin') {
+        if (!$isAdminLevel) {
             http_response_code(403);
             echo json_encode(["message" => "Akses ditolak. Rute ini khusus Administrator."]);
             exit();
@@ -179,7 +182,7 @@ elseif (strpos($uri, '/admin/') !== false) {
     }
     // MANAJEMEN DOKUMEN / UPLOADS
     elseif (strpos($uri, '/admin/dokumen') !== false) {
-        if (!in_array($userRole, ['admin', 'validator'])) { http_response_code(403); exit(); }
+        if (!$isAdminOrValidator) { http_response_code(403); exit(); }
 
         if ($method === 'GET') {
             $adminController->getAllDokumen();
