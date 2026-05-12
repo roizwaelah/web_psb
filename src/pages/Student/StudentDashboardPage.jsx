@@ -45,9 +45,9 @@ export default function StudentDashboardPage() {
     
     const fetchPengumuman = async () => {
       try {
-        const res = await api.get("/public/home");
-        if (res.data?.pengumuman_santri) {
-          setPengumuman(res.data.pengumuman_santri);
+        const res = await api.get(`/public/home?lembaga=${santriData.kode_lembaga || "ponpes"}`);
+        if (res.data?.data?.pengumuman_santri) {
+          setPengumuman(res.data.data.pengumuman_santri);
         }
       } catch (error) {
         console.error("Gagal menarik pengumuman");

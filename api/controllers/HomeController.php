@@ -71,8 +71,8 @@ class HomeController {
                 "hero_subtitle" => $settings['hero_subtitle'] ?? 'Mari bergabung bersama kami mencetak generasi Rabbani.',
                 "hero_background" => $settings['hero_background'] ?? '',
                 "section_titles" => [
-                    "alur" => $settings['alur_title'] ?? 'Alur Pendaftaran',
-                    "persyaratan" => $settings['syarat_title'] ?? 'Syarat & Ketentuan'
+                    "alur" => $settings['title_alur'] ?? 'Alur Pendaftaran',
+                    "persyaratan" => $settings['title_persyaratan'] ?? 'Syarat & Ketentuan'
                 ],
                 "kontak" => [
                     "alamat" => $settings['contact_address'] ?? 'Cilongok, Banyumas',
@@ -93,6 +93,7 @@ class HomeController {
                     "an2"   => $settings['payment_an2'] ?? '',
                     "qris"  => $settings['payment_qris'] ?? ''
                 ],
+                "pengumuman_santri" => $settings['pengumuman_santri'] ?? '',
                 "alur_artikel" => $settings['alur_artikel'] ?? '<h2>Panduan Pendaftaran</h2><p>Konten panduan sedang dipersiapkan oleh panitia.</p>',
                 "steps" => $alur,
                 "requirements" => $persyaratan,
